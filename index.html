@@ -1,11 +1,338 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>My first site</title>
-  </head>
-  <body>
-    <h1>Hello, world 👋</h1>
-    <p>If you can read this, GitHub Pages works!!</p>
-  </body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lucas – Home Drive</title>
+  <style>
+    :root{
+      --bg:#0f1115; /* charcoal */
+      --panel:#151923; /* panel */
+      --panel-2:#0d1017; /* deeper */
+      --text:#e6e9ef; /* near-white */
+      --muted:#a0a8b7; /* muted */
+      --accent:#7aa2ff; /* electric blue */
+      --accent-2:#9bffcb; /* mint */
+      --border:#242b39;
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font:14px/1.5 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      color:var(--text); background:radial-gradient(1200px 800px at 100% -10%, rgba(122,162,255,.07), transparent 60%),
+              linear-gradient(180deg, #0d0f14, #0b0d11 120%);
+      letter-spacing:.2px;
+    }
+
+    /* Top bar */
+    .topbar{display:flex; align-items:center; gap:12px; padding:10px 14px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01)); position:sticky; top:0; z-index:5}
+    .dot{width:10px; height:10px; border-radius:50%}
+    .d-red{background:#ff5f56} .d-yellow{background:#ffbd2e} .d-green{background:#27c93f}
+    .crumbs{display:flex; gap:6px; align-items:center; flex:1; min-width:0}
+    .crumbs .crumb{padding:6px 10px; background:var(--panel); border:1px solid var(--border); border-radius:10px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+    .crumbs .sep{color:var(--muted)}
+    .search{max-width:320px; position:relative; flex:0 0 auto}
+    .search input{width:100%; padding:10px 12px 10px 32px; border-radius:10px; border:1px solid var(--border); background:var(--panel); color:var(--text)}
+    .search svg{position:absolute; left:8px; top:8px; opacity:.8}
+
+    /* Layout */
+    .app{display:grid; grid-template-columns:280px 1fr; height:calc(100% - 46px)}
+    .sidebar{border-right:1px solid var(--border); background:linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)); padding:12px; overflow:auto}
+    .main{padding:16px; overflow:auto}
+
+    /* Tree */
+    .section-title{margin:10px 8px; font-weight:700; color:var(--muted); text-transform:uppercase; font-size:11px; letter-spacing:.12em}
+    .node{display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; cursor:pointer; color:var(--text)}
+    .node:hover{background:rgba(255,255,255,.04)}
+    .node .name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .node.folder{gap:6px}
+    .caret{width:14px; height:14px; display:inline-flex; align-items:center; justify-content:center; opacity:.8; transition:transform .15s ease}
+    .caret svg{display:block}
+    .caret.collapsed{transform:rotate(-90deg)}
+    .children{margin-left:18px; border-left:1px dashed rgba(255,255,255,.08); padding-left:8px}
+    .children.collapsed{display:none}
+    .badge{font-size:11px; color:var(--muted)}
+
+    /* Grid */
+    .grid{display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:12px}
+    .card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px; display:flex; flex-direction:column; gap:10px; transition:transform .15s ease, border-color .15s ease}
+    .card:hover{transform:translateY(-2px); border-color:rgba(122,162,255,.5)}
+    .card .title{font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+    .card .desc{font-size:12px; color:var(--muted); height:32px; overflow:hidden}
+    .pill{font-size:11px; border:1px solid var(--border); color:var(--muted); padding:3px 8px; border-radius:999px; display:inline-block}
+
+    /* Viewer */
+    .viewer{margin-top:16px; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px}
+    .viewer h2{margin:0 0 6px 0}
+    .meta{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px}
+
+    /* Footer */
+    .footer{color:var(--muted); font-size:12px; padding:12px 16px; border-top:1px solid var(--border)}
+
+    @media (max-width: 860px){
+      .app{grid-template-columns:1fr}
+      .sidebar{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="dot d-red"></div>
+    <div class="dot d-yellow"></div>
+    <div class="dot d-green"></div>
+    <div class="crumbs" id="breadcrumbs"></div>
+    <div class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.5"/></svg>
+      <input id="search" placeholder="Search files (Ctrl/⌘+K)" />
+    </div>
+  </div>
+
+  <div class="app">
+    <aside class="sidebar">
+      <div class="section-title">root</div>
+      <div id="tree"></div>
+    </aside>
+
+    <main class="main">
+      <h1 id="folderTitle">Home</h1>
+      <div class="grid" id="grid"></div>
+      <div class="viewer" id="viewer" style="display:none"></div>
+    </main>
+  </div>
+
+  <div class="footer">© <span id="year"></span> Lucas Lam • Home Drive</div>
+
+  <script>
+  // --- Minimal "original" file-system styled UI ---
+  // All content can live in this DATA object; you can expand later into separate JSON/MD files.
+  const DATA = {
+    id: 'root', type: 'folder', name: 'Home', slug: '', children: [
+      { id:'about', type:'file', name:'About.me', tags:['profile'], summary:'Who I am, what I care about.', content:`# Hey, I\'m Lucas\n\nI\'m building this little home on the web. I like learning, creating, and shipping things.\n\n**Hobbies:** guitar, camping, fitness, coding.\n\nThis site is an experiment in browsing my world like a file system.`, meta:{year:new Date().getFullYear(), role:'Student/Builder'} },
+
+      { id:'projects', type:'folder', name:'Projects', children:[
+        { id:'p1', type:'file', name:'Project-1.txt', tags:['project'], summary:'A small thing I\'m proud of.', content:`# Project 1\n\nA short paragraph about what it is, why I made it, and what I learned.` },
+        { id:'p2', type:'file', name:'Project-2.txt', tags:['project'], summary:'Another experiment.', content:`# Project 2\n\nQuick blurb + a link placeholder.` },
+      ]},
+
+      { id:'hobbies', type:'folder', name:'Hobbies', children:[
+        { id:'guitar', type:'file', name:'Guitar.md', tags:['music'], summary:'Songs I\'m learning + gear notes.', content:`# Guitar\n\n- Learning: Sparks (Coldplay)\n- Practice log here...` },
+        { id:'camping', type:'file', name:'Camping.md', tags:['outdoors'], summary:'Trips + packing lists.', content:`# Camping\n\nA few notes and favorite spots.` },
+      ]},
+
+      { id:'contact', type:'file', name:'Contact.card', tags:['contact'], summary:'Say hello.', content:`# Contact\n\n- Email: <a href=\"mailto:hello@example.com\">hello@example.com</a>\n- GitHub: <a href=\"https://github.com/your-username\" target=\"_blank\">@your-username</a>` },
+    ]
+  };
+
+  // --- State ---
+  let currentPath = ['root']; // array of node ids leading to current folder
+  // Track which folder IDs are collapsed in the sidebar tree
+  let collapsed = new Set();
+
+  // --- Helpers ---
+  const $ = s => document.querySelector(s);
+  function findNodeById(id, node=DATA){
+    if(node.id===id) return node;
+    if(node.children) for(const ch of node.children){
+      const f = findNodeById(id, ch); if(f) return f;
+    }
+    return null;
+  }
+  function findNodeByPath(path){
+    let node = DATA;
+    for(let i=1;i<path.length;i++){
+      const id = path[i];
+      node = (node.children||[]).find(n=>n.id===id) || node;
+    }
+    return node;
+  }
+
+  // --- Render Tree ---
+  function renderTree(node=DATA, container=$('#tree')){
+    container.innerHTML='';
+    function render(node, parent){
+      const el = document.createElement('div');
+      el.className = 'node' + (node.type==='folder' ? ' folder' : '');
+      el.dataset.id = node.id;
+
+      // caret for folders
+      let caretHTML = '';
+      if(node.type==='folder'){
+        const isCollapsed = collapsed.has(node.id);
+        caretHTML = `<span class="caret ${isCollapsed?'collapsed':''}" data-caret="${node.id}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5l8 7-8 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>`;
+      }
+
+      el.innerHTML = `${caretHTML}${icon(node)}<span class=\"name\">${node.name}</span>${node.type==='folder'?`<span class=\"badge\">${(node.children||[]).length}</span>`:''}`;
+
+      // clicking the caret only toggles collapse
+      el.addEventListener('click', (e)=>{
+        const caret = e.target.closest('[data-caret]');
+        if(caret){
+          const id = caret.getAttribute('data-caret');
+          if(collapsed.has(id)) collapsed.delete(id); else collapsed.add(id);
+          renderTree();
+          return;
+        }
+        // otherwise open folder or file
+        if(node.type==='folder'){ openFolderById(node.id); }
+        else { openFile(node); }
+      });
+
+      parent.appendChild(el);
+
+      // children
+      if(node.children){
+        const kids = document.createElement('div');
+        const isCollapsed = collapsed.has(node.id);
+        kids.className = 'children' + (isCollapsed ? ' collapsed' : '');
+        parent.appendChild(kids);
+        if(!isCollapsed){ node.children.forEach(ch=>render(ch, kids)); }
+      }
+    }
+    render(node, container);
+  }
+
+  // --- Render Breadcrumbs ---
+  function renderCrumbs(){
+    const bar = $('#breadcrumbs'); bar.innerHTML='';
+    const pathNodes = currentPath.map(id=>findNodeById(id));
+    pathNodes.forEach((node, idx)=>{
+      const c = document.createElement('div'); c.className='crumb'; c.textContent = node.name;
+      c.addEventListener('click', ()=>{ currentPath = currentPath.slice(0, idx+1); renderMain(); });
+      bar.appendChild(c);
+      if(idx<pathNodes.length-1){ const s=document.createElement('span'); s.className='sep'; s.textContent='›'; bar.appendChild(s); }
+    });
+  }
+
+  // --- Open folder / file ---
+  function openFolderById(id){
+    // if id not in path, append; else trim to that id
+    const idx = currentPath.indexOf(id);
+    if(idx===-1) currentPath.push(id); else currentPath = currentPath.slice(0, idx+1);
+    renderMain();
+  }
+  function openFile(file){
+    const viewer = $('#viewer'); viewer.style.display='block';
+    viewer.innerHTML = renderMarkdown(file);
+    // Scroll to viewer
+    viewer.scrollIntoView({behavior:'smooth', block:'start'});
+  }
+
+  // --- Main area ---
+  function renderMain(){
+    renderCrumbs();
+    const node = findNodeByPath(currentPath);
+    $('#folderTitle').textContent = node.name;
+    const grid = $('#grid'); grid.innerHTML='';
+    (node.children||[]).forEach(item=>{
+      const card = document.createElement('div'); card.className='card';
+      card.innerHTML = `${icon(item,48)}<div class="title">${item.name}</div><div class="desc">${item.summary||''}</div><div>${(item.tags||[]).map(t=>`<span class='pill'>${t}</span>`).join(' ')}</div>`;
+      card.addEventListener('dblclick', ()=> item.type==='folder'? openFolderById(item.id): openFile(item));
+      card.addEventListener('click',  ()=> item.type==='folder'? openFolderById(item.id): openFile(item));
+      grid.appendChild(card);
+    });
+    // hide viewer if navigating folders
+    if(node.type==='folder') $('#viewer').style.display='none';
+  }
+
+  // --- Icons ---
+  function icon(node, size=16){
+    const s = size; const stroke = 'currentColor';
+    if(node.type==='folder'){
+      return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.9"><path d="M3.5 7.5h6l2 2h9v7.5a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2Z" stroke="${stroke}" stroke-width="1.4"/></svg>`
+    }
+    // file
+    return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:.9"><path d="M7 3.8h6l4 4v12.4a1.6 1.6 0 0 1-1.6 1.6H7A1.6 1.6 0 0 1 5.4 20V5.4A1.6 1.6 0 0 1 7 3.8Z" stroke="${stroke}" stroke-width="1.4"/><path d="M13 3.8V8h4" stroke="${stroke}" stroke-width="1.4"/></svg>`
+  }
+
+  // --- Super-light Markdown renderer (headings + lists + links + bold) ---
+  function renderMarkdown(file){
+    const txt = file.content || '';
+    let html = txt
+      .replace(/^# (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^## (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n\n/g, '<br/><br/>')
+      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">$1</a>');
+    html = html.replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>');
+    const meta = file.meta ? `<div class="meta">${Object.entries(file.meta).map(([k,v])=>`<span class='pill'>${k}: ${v}</span>`).join(' ')}</div>`:'';
+    return `<h2>${file.name}</h2>${meta}<div>${html}</div>`;
+  }
+
+  // --- Search (Ctrl/⌘+K) ---
+  function flatten(node=DATA, acc=[]){
+    acc.push(node);
+    (node.children||[]).forEach(ch=>flatten(ch, acc));
+    return acc;
+  }
+  function runSearch(q){
+    const items = flatten().filter(n=>n.type==='file');
+    const res = items.filter(f=> (f.name+ ' ' + (f.summary||'') + ' ' + (f.tags||[]).join(' ')).toLowerCase().includes(q.toLowerCase()));
+    const grid = $('#grid'); grid.innerHTML='';
+    res.forEach(item=>{
+      const card = document.createElement('div'); card.className='card';
+      card.innerHTML = `${icon(item,48)}<div class="title">${item.name}</div><div class="desc">${item.summary||''}</div>`;
+      card.addEventListener('click', ()=> openFile(item));
+      grid.appendChild(card);
+    });
+    $('#folderTitle').textContent = `Search: "${q}" (${res.length})`;
+    $('#viewer').style.display='none';
+  }
+
+  // --- Simple runtime tests (console) ---
+  function runTests(){
+    const results = [];
+    function t(name, fn){
+      try{ fn(); console.log('%cPASS','color:#0f0', name); results.push({name, pass:true}); }
+      catch(e){ console.error('FAIL', name, e); results.push({name, pass:false, err:e}); }
+    }
+    // Test 1: DOM mounts
+    t('App mounts key elements', ()=>{
+      if(!document.getElementById('tree')) throw new Error('#tree missing');
+      if(!document.getElementById('grid')) throw new Error('#grid missing');
+      if(!document.getElementById('breadcrumbs')) throw new Error('#breadcrumbs missing');
+    });
+    // Test 2: Tree renders nodes
+    t('Tree renders nodes', ()=>{
+      const nodes = document.querySelectorAll('.sidebar .node');
+      if(nodes.length < 4) throw new Error('expected >=4 nodes in tree');
+    });
+    // Test 3: Collapse toggles for Projects
+    t('Caret collapse toggles for Projects', ()=>{
+      collapsed.add('projects');
+      renderTree();
+      const projCaret = document.querySelector('[data-caret="projects"]');
+      if(!projCaret) throw new Error('projects caret not found');
+      const kidsContainer = projCaret.parentElement.nextElementSibling;
+      if(!kidsContainer.classList.contains('collapsed')) throw new Error('projects was not collapsed');
+      // expand back
+      collapsed.delete('projects');
+      renderTree();
+      const projCaret2 = document.querySelector('[data-caret="projects"]');
+      const kidsContainer2 = projCaret2.parentElement.nextElementSibling;
+      if(kidsContainer2.classList.contains('collapsed')) throw new Error('projects did not expand');
+    });
+    // Summary
+    const allPass = results.every(r=>r.pass);
+    console.log('%cTest summary:', 'color:#7aa2ff', results);
+    if(!allPass){ console.warn('One or more tests failed. See errors above.'); }
+  }
+
+  // --- Events ---
+  document.addEventListener('DOMContentLoaded', ()=>{
+    renderTree(); renderMain();
+    document.getElementById('year').textContent = new Date().getFullYear();
+    const s = document.getElementById('search');
+    s.addEventListener('input', e=>{ if(e.target.value.trim()===''){ renderMain(); } else { runSearch(e.target.value); } });
+    document.addEventListener('keydown', e=>{
+      if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); s.focus(); s.select(); }
+    });
+    // Run simple tests in dev
+    try { runTests(); } catch(e){ console.error('Test runner error', e); }
+  });
+  </script>
+</body>
 </html>
